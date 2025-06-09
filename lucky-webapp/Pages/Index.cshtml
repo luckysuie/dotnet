@@ -1,11 +1,43 @@
-﻿@page
+@page
 @model IndexModel
 @{
     ViewData["Title"] = "Home page";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome to DevOps Course!!</h1>
-    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        background-image: url('https://wallpapers.com/images/hd/one-piece-pictures-bjm9tdff9yzguoup.jpg');
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        height: 100vh;
+        color: white;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
 
+    .overlay {
+        background-color: rgba(0, 0, 0, 0.5); /* semi-transparent dark layer for readability */
+        height: 100%;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        flex-direction: column;
+        text-align: center;
+    }
+
+    h1, p, a {
+        color: white;
+    }
+
+    a {
+        text-decoration: underline;
+    }
+</style>
+
+<div class="overlay">
+    <h1 class="display-4">Welcome to DevOps Course and Anime!!</h1>
+    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core" target="_blank">building Web apps with ASP.NET Core</a>.</p>
+</div>
