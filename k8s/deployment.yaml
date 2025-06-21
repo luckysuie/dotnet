@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: luckywebapp
-        image: luckyregistry.azurecr.io/luck:v1
+        image: luckyregistry11.azurecr.io/luck:v1
         ports:
         - containerPort: 80
 
