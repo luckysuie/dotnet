@@ -40,15 +40,15 @@ pipeline {
         stage('Docker Build and Tag') {
             steps {
                 sh '''
-                docker build -t $IMAGE_NAME .
-                docker tag $IMAGE_NAME $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
+                sudo docker build -t $IMAGE_NAME .
+                sudo docker tag $IMAGE_NAME $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG
                 '''
             }
         }
 
         stage('Push to ACR') {
             steps {
-                sh 'docker push $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG'
+                sh 'sudo docker push $ACR_LOGIN_SERVER/$IMAGE_NAME:$IMAGE_TAG'
             }
         }
 
