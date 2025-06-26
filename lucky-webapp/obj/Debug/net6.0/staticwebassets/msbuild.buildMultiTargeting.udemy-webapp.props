@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="../build/udemy-webapp.props" />
-</Project>

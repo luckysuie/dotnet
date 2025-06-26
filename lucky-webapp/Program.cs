@@ -1,5 +1,12 @@
 ﻿var builder = WebApplication.CreateBuilder(args);
 
+// 🔧 Enable external access on port 5000
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.ListenAnyIP(5000);  // HTTP
+    // Optional: serverOptions.ListenAnyIP(5001, listenOptions => listenOptions.UseHttps()); // HTTPS
+});
+
 // Add services to the container.
 builder.Services.AddRazorPages();
 
@@ -9,7 +16,6 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
 
@@ -23,4 +29,4 @@ app.UseAuthorization();
 app.MapRazorPages();
 
 app.Run();
-
+  
