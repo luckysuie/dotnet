@@ -25,6 +25,7 @@ stages:
               provider: 'azurerm'
               command: 'init'
               backendType: 'none'
+              ensureBackend: false
               workingDirectory: '$(System.DefaultWorkingDirectory)/infra'
 
           - task: TerraformTaskV4@4
