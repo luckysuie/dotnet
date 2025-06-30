@@ -1,0 +1,101 @@
+trigger:
+  - main
+
+pool:
+  vmImage: 'windows-latest'
+
+stages:
+  # ----------- Infra Stage -----------
+  - stage: Infrastructure
+    displayName: 'Deploy Azure Infrastructure (Terraform)'
+    jobs:
+      - job: TerraformJob
+        displayName: 'Terraform Init & Apply'
+        steps:
+          - task: TerraformInstaller@0
+            displayName: 'Install Terraform CLI'
+            inputs:
+              terraformVersion: 'latest'
+
+          - checkout: self
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform Init'
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/infra'
+
+          - task: TerraformTaskV4@4
+            displayName: 'Terraform Apply'
+            inputs:
+              provider: 'azurerm'
+              command: 'apply'
+              workingDirectory: '$(System.DefaultWorkingDirectory)/infra'
+              environmentServiceNameAzureRM: 'bootproject1'
+              commandOptions: '-auto-approve'
+
+  # ----------- CI Stage -----------
+  - stage: Build
+    displayName: 'Build and Test'
+    dependsOn: Infrastructure
+    jobs:
+      - job: BuildJob
+        displayName: 'Build and Test Project'
+        steps:
+          - task: UseDotNet@2
+            displayName: 'Install .NET SDK'
+            inputs:
+              packageType: 'sdk'
+              version: '8.0.411'
+
+          - script: dotnet restore
+            displayName: 'Restore dependencies'
+
+          - script: dotnet build --configuration Release
+            displayName: 'Build project'
+
+          - script: dotnet test
+            displayName: 'Run unit tests'
+            continueOnError: true
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Publish .NET Project'
+            inputs:
+              command: 'publish'
+              publishWebProjects: true
+              arguments: '--configuration Release --output $(Build.ArtifactStagingDirectory)'
+              zipAfterPublish: true
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish Build Artifacts'
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'drop'
+              publishLocation: 'Container'
+
+  # ----------- CD Stage -----------
+  - stage: Deploy
+    displayName: 'Deploy to Azure App Service'
+    dependsOn: Build
+    jobs:
+      - deployment: DeployToAppService
+        environment: 'Dev'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: DownloadBuildArtifacts@0
+                  displayName: 'Download Published Artifact'
+                  inputs:
+                    buildType: 'current'
+                    downloadType: 'single'
+                    artifactName: 'drop'
+                    downloadPath: '$(System.ArtifactsDirectory)'
+
+                - task: AzureWebApp@1
+                  displayName: 'lucky-spn-connec'
+                  inputs:
+                    azureSubscription: 'bootproject1'
+                    appName: 'DotNetWebApp22'
+                    package: '$(System.ArtifactsDirectory)/drop/*.zip'
