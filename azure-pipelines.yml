@@ -32,7 +32,7 @@ stages:
               provider: 'azurerm'
               command: 'apply'
               workingDirectory: '$(System.DefaultWorkingDirectory)/infra'
-              environmentServiceNameAzureRM: 'bootproject1'
+              environmentServiceNameAzureRM: 'lucky-spn-connec'
               commandOptions: '-auto-approve'
 
   # ----------- CI Stage -----------
@@ -94,8 +94,8 @@ stages:
                     downloadPath: '$(System.ArtifactsDirectory)'
 
                 - task: AzureWebApp@1
-                  displayName: 'lucky-spn-connec'
+                  displayName: 'Deploy to App'
                   inputs:
-                    azureSubscription: 'bootproject1'
+                    azureSubscription: 'lucky-spn-connec'
                     appName: 'DotNetWebApp22'
                     package: '$(System.ArtifactsDirectory)/drop/*.zip'
