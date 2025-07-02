@@ -12,7 +12,7 @@ stages:
     - task: UseDotNet@2
       inputs:
         packageType: 'sdk'
-        version: '8.x.x' # or your required version
+        version: '8.0' # or your required version
 
     - task: DotNetCoreCLI@2
       inputs:
