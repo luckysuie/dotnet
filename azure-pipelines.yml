@@ -2,6 +2,30 @@ trigger:
       - main
 
 stages:
+- stage: ProvisionInfra
+  displayName: "Provision Azure Infra with Terraform"
+  jobs:
+  - job: Terraform
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - checkout: self
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: 'latest'
+      displayName: 'Installing Terraform'
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: 'lucky-spn-connec'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          cd infra
+          terraform init
+          terraform plan -out=tfplan
+          terraform apply -auto-approve tfplan
+      displayName: 'provisioning Infra'
+
 - stage: BuildApp
   displayName: "Build and Publish ASP.NET App"
   jobs:
@@ -35,21 +59,20 @@ stages:
     - publish: $(Build.ArtifactStagingDirectory)
       artifact: drop
 
-# # 3. DEPLOY
-# - stage: DeployApp
-#   displayName: "Deploy to Azure App Service"
-#   dependsOn: BuildApp
-#   jobs:
-#   - job: Deploy
-#     pool:
-#       vmImage: 'windows-latest'
-#     steps:
-#     - download: current
-#       artifact: drop
+- stage: DeployApp
+  displayName: "Deploy to Azure App Service"
+  jobs:
+  - job: Deploy
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - download: current
+      artifact: drop
 
-#     - task: AzureWebApp@1
-#       inputs:
-#         azureSubscription: 'YOUR-AZURE-SERVICE-CONNECTION'
-#         appType: 'webApp'
-#         appName: '$(APP_SERVICE_NAME)' # Output from Terraform
-#         package: '$(Pipeline.Workspace)/drop/**/*.zip'
+    - task: AzureWebApp@1
+      inputs:
+        azureSubscription: 'lucky-spn-connec'
+        appType: 'webApp'
+        appName: 'luckywebapp'
+        package: '$(Pipeline.Workspace)/drop/**/*.zip'
+      displayName: 'Deploying to App'
