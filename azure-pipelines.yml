@@ -1,103 +1,76 @@
 trigger:
-  - main1234
-
-pool:
-  vmImage: 'windows-latest'
+      - main
 
 stages:
-  # ----------- Infrastructure Stage -----------
-  - stage: Infrastructure
-    displayName: 'Deploy Azure Infrastructure (Terraform)'
-    jobs:
-      - job: TerraformJob
-        displayName: 'Terraform Init & Apply'
-        steps:
-          - task: TerraformInstaller@0
-            displayName: 'Install Terraform CLI'
-            inputs:
-              terraformVersion: 'latest'
+- stage: ProvisionInfra
+  displayName: "Provision Azure Infra with Terraform"
+  jobs:
+  - job: Terraform
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - checkout: self
 
-          - checkout: self
+    - task: AzureCLI@2
+      inputs:
+        azureSubscription: 'lucky-spn-connec'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          cd infra
+          terraform init
+          terraform plan -out=tfplan
+          terraform apply -auto-approve tfplan
 
-          - task: TerraformTaskV4@4
-            displayName: 'Terraform Init (local state)'
-            inputs:
-              provider: 'azurerm'
-              command: 'init'
-              backendType: 'none'
-              ensureBackend: false
-              workingDirectory: '$(System.DefaultWorkingDirectory)/infra'
+# # 2. BUILD & PUBLISH
+# - stage: BuildApp
+#   displayName: "Build and Publish ASP.NET App"
+#   dependsOn: ProvisionInfra
+#   jobs:
+#   - job: Build
+#     pool:
+#       vmImage: 'windows-latest'
+#     steps:
+#     - task: UseDotNet@2
+#       inputs:
+#         packageType: 'sdk'
+#         version: '8.x.x' # or your required version
 
-          - task: TerraformTaskV4@4
-            displayName: 'Terraform Apply'
-            inputs:
-              provider: 'azurerm'
-              command: 'apply'
-              workingDirectory: '$(System.DefaultWorkingDirectory)/infra'
-              environmentServiceNameAzureRM: 'lucky-spn-connec'
-              commandOptions: '-auto-approve'
+#     - task: DotNetCoreCLI@2
+#       inputs:
+#         command: 'restore'
+#         projects: '**/*.csproj'
 
-  # ----------- Build and Test Stage -----------
-  - stage: Build
-    displayName: 'Build and Test'
-    dependsOn: Infrastructure
-    jobs:
-      - job: BuildJob
-        displayName: 'Build and Test Project'
-        steps:
-          - task: UseDotNet@2
-            displayName: 'Install .NET SDK'
-            inputs:
-              packageType: 'sdk'
-              version: '8.0.411'
+#     - task: DotNetCoreCLI@2
+#       inputs:
+#         command: 'build'
+#         projects: '**/*.csproj'
 
-          - script: dotnet restore lucky.sln
-            displayName: 'Restore dependencies'
+#     - task: DotNetCoreCLI@2
+#       inputs:
+#         command: 'publish'
+#         publishWebProjects: true
+#         arguments: '--configuration Release --output $(Build.ArtifactStagingDirectory)'
+#         zipAfterPublish: true
 
-          - script: dotnet build lucky.sln --configuration Release
-            displayName: 'Build project'
+#     - publish: $(Build.ArtifactStagingDirectory)
+#       artifact: drop
 
-          - script: dotnet test lucky.sln
-            displayName: 'Run unit tests'
-            continueOnError: true
+# # 3. DEPLOY
+# - stage: DeployApp
+#   displayName: "Deploy to Azure App Service"
+#   dependsOn: BuildApp
+#   jobs:
+#   - job: Deploy
+#     pool:
+#       vmImage: 'windows-latest'
+#     steps:
+#     - download: current
+#       artifact: drop
 
-          - task: DotNetCoreCLI@2
-            displayName: 'Publish .NET Project'
-            inputs:
-              command: 'publish'
-              projects: '**/luckywebapp.csproj'
-              arguments: '--configuration Release --output $(Build.ArtifactStagingDirectory)'
-              zipAfterPublish: true
-
-          - task: PublishBuildArtifacts@1
-            displayName: 'Publish Build Artifacts'
-            inputs:
-              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-              ArtifactName: 'drop'
-              publishLocation: 'Container'
-
-  # ----------- Deployment Stage -----------
-  - stage: Deploy
-    displayName: 'Deploy to Azure App Service'
-    dependsOn: Build
-    jobs:
-      - deployment: DeployToAppService
-        environment: 'Dev'
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - task: DownloadBuildArtifacts@0
-                  displayName: 'Download Published Artifact'
-                  inputs:
-                    buildType: 'current'
-                    downloadType: 'single'
-                    artifactName: 'drop'
-                    downloadPath: '$(System.ArtifactsDirectory)'
-
-                - task: AzureWebApp@1
-                  displayName: 'Deploy to Azure App Service'
-                  inputs:
-                    azureSubscription: 'lucky-spn-connec'
-                    appName: 'DotNetWebApp22'
-                    package: '$(System.ArtifactsDirectory)/drop/*.zip'
+#     - task: AzureWebApp@1
+#       inputs:
+#         azureSubscription: 'YOUR-AZURE-SERVICE-CONNECTION'
+#         appType: 'webApp'
+#         appName: '$(APP_SERVICE_NAME)' # Output from Terraform
+#         package: '$(Pipeline.Workspace)/drop/**/*.zip'
