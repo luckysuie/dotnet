@@ -1,6 +1,6 @@
 provider "azurerm" { 
 features {} 
-subscription_id = "946461f2-5424-4818-bd06-010e5f3cd8c1"
+subscription_id = "yoursubscriptionid"
 } 
 resource "azurerm_resource_group" "rg" { 
 name     = "rg-dotnet-app" 
