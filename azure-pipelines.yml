@@ -7,12 +7,13 @@ stages:
   jobs:
   - job: Build
     pool:
-      vmImage: 'windows-latest'
+      vmImage: 'ubuntu-latest'
     steps:
     - task: UseDotNet@2
       inputs:
         packageType: 'sdk'
-        version: '8.0' # or your required version
+        version: '8.0.411' # or your required version
+    
 
     - task: DotNetCoreCLI@2
       inputs:
