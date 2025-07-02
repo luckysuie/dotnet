@@ -1,5 +1,5 @@
 trigger:
-      - main
+  - main
 
 stages:
 - stage: ProvisionInfra
@@ -10,10 +10,12 @@ stages:
       vmImage: 'ubuntu-latest'
     steps:
     - checkout: self
+
     - task: TerraformInstaller@1
       inputs:
         terraformVersion: 'latest'
       displayName: 'Installing Terraform'
+
     - task: AzureCLI@2
       inputs:
         azureSubscription: 'lucky-spn-connec'
@@ -24,10 +26,11 @@ stages:
           terraform init
           terraform plan -out=tfplan
           terraform apply -auto-approve tfplan
-      displayName: 'provisioning Infra'
+      displayName: 'Provisioning Infra'
 
 - stage: BuildApp
   displayName: "Build and Publish ASP.NET App"
+  dependsOn: ProvisionInfra
   jobs:
   - job: Build
     pool:
@@ -36,18 +39,26 @@ stages:
     - task: UseDotNet@2
       inputs:
         packageType: 'sdk'
-        version: '8.0.411' # or your required version
-    
+        version: '8.0.411'
+      displayName: 'Install Dotnet'
 
     - task: DotNetCoreCLI@2
       inputs:
         command: 'restore'
         projects: '**/*.csproj'
+      displayName: 'Restoring Dependencies'
 
     - task: DotNetCoreCLI@2
       inputs:
         command: 'build'
         projects: '**/*.csproj'
+      displayName: 'Building'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'test'
+        projects: '**/*.csproj'
+      displayName: 'Running Tests'
 
     - task: DotNetCoreCLI@2
       inputs:
@@ -55,24 +66,74 @@ stages:
         publishWebProjects: true
         arguments: '--configuration Release --output $(Build.ArtifactStagingDirectory)'
         zipAfterPublish: true
+      displayName: 'Publishing Artifact'
 
-    - publish: $(Build.ArtifactStagingDirectory)
-      artifact: drop
-
-- stage: DeployApp
-  displayName: "Deploy to Azure App Service"
-  jobs:
-  - job: Deploy
-    pool:
-      vmImage: 'ubuntu-latest'
-    steps:
-    - download: current
-      artifact: drop
-
-    - task: AzureWebApp@1
+    - task: PublishBuildArtifacts@1
       inputs:
-        azureSubscription: 'lucky-spn-connec'
-        appType: 'webApp'
-        appName: 'luckywebapp'
-        package: '$(Pipeline.Workspace)/drop/**/*.zip'
-      displayName: 'Deploying to App'
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'drop'
+        publishLocation: 'Container'
+      displayName: 'Publishing to Pipeline Artifact'
+
+- stage: DeployToDev
+  displayName: "Deploy to Dev Environment"
+  dependsOn: BuildApp
+  jobs:
+  - deployment: DeployDev
+    environment: Dev
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: drop
+
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: 'lucky-spn-connec'
+              appType: 'webApp'
+              appName: 'luckywebapp-dev'
+              package: '$(Pipeline.Workspace)/drop/**/*.zip'
+            displayName: 'Deploying to Dev App Service'
+
+- stage: DeployToStage
+  displayName: "Deploy to Stage Environment"
+  dependsOn: DeployToDev
+  jobs:
+  - deployment: DeployStage
+    environment: Stage
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: drop
+
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: 'lucky-spn-connec'
+              appType: 'webApp'
+              appName: 'luckywebapp-stage'
+              package: '$(Pipeline.Workspace)/drop/**/*.zip'
+            displayName: 'Deploying to Stage App Service'
+
+- stage: DeployToProd
+  displayName: "Deploy to Production Environment"
+  dependsOn: DeployToStage
+  jobs:
+  - deployment: DeployProd
+    environment: Production
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - download: current
+            artifact: drop
+
+          - task: AzureWebApp@1
+            inputs:
+              azureSubscription: 'lucky-spn-connec'
+              appType: 'webApp'
+              appName: 'luckywebapp-prod'
+              package: '$(Pipeline.Workspace)/drop/**/*.zip'
+            displayName: 'Deploying to Production App Service'
