@@ -10,7 +10,10 @@ stages:
       vmImage: 'ubuntu-latest'
     steps:
     - checkout: self
-
+    - task: TerraformInstaller@1
+      inputs:
+        terraformVersion: 'latest'
+      displayName: 'Installing Terraform'
     - task: AzureCLI@2
       inputs:
         azureSubscription: 'lucky-spn-connec'
@@ -21,6 +24,7 @@ stages:
           terraform init
           terraform plan -out=tfplan
           terraform apply -auto-approve tfplan
+      displayName: 'provisioning Infra'
 
 # # 2. BUILD & PUBLISH
 # - stage: BuildApp
